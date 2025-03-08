@@ -1,0 +1,144 @@
+#!/bin/bash
+
+#*******************************************************************************
+#* Copyright 2025 Michele Dei 
+#* michele.dei@unipi.it
+#*
+#* Licensed under the Apache License, Version 2.0 (the "License");
+#* you may not use this file except in compliance with the License.
+#* You may obtain a copy of the License at
+#*
+#*     http://www.apache.org/licenses/LICENSE-2.0
+#*
+#* Unless required by applicable law or agreed to in writing, software
+#* distributed under the License is distributed on an "AS IS" BASIS,
+#* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#* See the License for the specific language governing permissions and
+#* limitations under the License.
+#*******************************************************************************
+
+# Script: ngspice Automation Script
+
+# Purpose:
+# --------
+# This script automates the process of running an ngspice simulation while 
+# integrating additional preprocessing and postprocessing steps. It:
+# - Runs `bin.py` to modify the netlist before simulation.
+# - Executes ngspice to simulate the provided netlist.
+# - Optionally converts raw output data to CSV using `raw2csv.py` (if "-csv" is specified).
+# - Optionally generates plots using `csv_plotter.py` (if "-pdf" is specified).
+# - Optionally compares results using `csv_comp.py` (if "-cmp" is specified).
+
+# Functionality:
+# --------------
+# 1. **Checks Input Arguments:**
+#    - Ensures a netlist file is provided as an argument.
+#    - Displays usage instructions if no file is specified.
+
+# 2. **Preprocessing:**
+#    - Checks if `bin.py` exists and is executable.
+#    - Runs `bin.py` to modify the netlist file.
+
+# 3. **Simulation Execution:**
+#    - Verifies if `ngspice` is installed.
+#    - Runs `ngspice` on the modified netlist.
+
+# 4. **Postprocessing (Optional Steps Based on Arguments):**
+#    - **Convert Raw Data to CSV (-csv)**  
+#      - Checks for `raw2csv.py` and runs it if found.
+#    - **Generate Plots (-pdf)**  
+#      - Checks for `csv_plotter.py` and runs it if found.
+#    - **Compare Results (-cmp)**  
+#      - Checks for `csv_comp.py` and runs it if found.
+
+# Usage:
+# ------
+# Run the script with:
+#    ./ng.sh <netlist_file> [-csv] [-pdf] [-cmp]
+#
+# Where:
+# - `<netlist_file>` : The SPICE netlist file to simulate.
+# - `-csv` : Converts simulation output to CSV format.
+# - `-pdf` : Generates a plot from the simulation results.
+# - `-cmp` : Compares results against reference data.
+
+# Error Handling:
+# ---------------
+# - Ensures required scripts (`bin.py`, `raw2csv.py`, `csv_plotter.py`, `csv_comp.py`) exist and are executable.
+# - Checks if the provided netlist file exists.
+# - Verifies that `ngspice` is installed before execution.
+# - Displays relevant error messages and exits with a failure code if any requirement is not met.
+
+
+# Check if a netlist file is provided as an argument
+if [ $# -eq 0 ]; then
+  echo "Usage: ng <netlist_file>"
+  exit 1
+fi
+
+netlist_file="$1"  # Store the netlist file name
+
+# Check if the netlist file exists
+if [ ! -f "$netlist_file" ]; then
+  echo "Error: Netlist file '$netlist_file' not found."
+  exit 1
+fi
+
+# Check if bin.py exists and is executable
+if [ ! -x "./bin.py" ]; then
+    echo "Error: bin.py not found or not executable in the current directory."
+    exit 1
+fi
+
+
+# Run bin.py to modify the netlist
+./bin.py "$netlist_file"
+
+# Check if ngspice is installed
+if ! command -v ngspice &> /dev/null; then
+  echo "Error: ngspice is not installed."
+  exit 1
+fi
+
+# Run ngspice on the modified netlist
+ngspice "$netlist_file"
+
+echo "ngspice simulation completed."
+
+# Check for the -csv switch
+if [[ "$2" == "-csv" ]]; then
+  # Check if raw2csv.py exists and is executable
+  if [ ! -x "./raw2csv.py" ]; then
+    echo "Error: raw2csv.py not found or not executable in the current directory."
+    exit 1
+  fi
+    
+  ./raw2csv.py "$netlist_file"
+  echo "raw2csv.py execution completed."
+fi
+
+# Check for the -pdf switch
+if [[ "$3" == "-pdf" ]]; then
+  # Check if csv_plotter.py exists and is executable
+  if [ ! -x "./csv_plotter.py" ]; then
+    echo "Error: csv_plotter.py not found or not executable in the current directory."
+    exit 1
+  fi
+    
+  ./csv_plotter.py "$netlist_file"
+  echo "csv_plotter.py execution completed."
+fi
+
+# Check for the -cmp switch
+if [[ "$3" == "-cmp" ]]; then
+  # Check if csv_comp.py exists and is executable
+  if [ ! -x "./csv_comp.py" ]; then
+    echo "Error: csv_comp.py not found or not executable in the current directory."
+    exit 1
+  fi
+    
+  ./csv_comp.py "$netlist_file"
+  echo "csv_plotter.py execution completed."
+fi
+
+exit 0
